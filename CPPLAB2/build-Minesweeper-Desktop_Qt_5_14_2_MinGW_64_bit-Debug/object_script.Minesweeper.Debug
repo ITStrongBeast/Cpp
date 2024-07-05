@@ -1,0 +1,10 @@
+debug/board.o
+debug/cell.o
+debug/customgame.o
+debug/game.o
+debug/main.o
+debug/qrc_resource.o
+debug/moc_board.o
+debug/moc_cell.o
+debug/moc_customgame.o
+debug/moc_game.o

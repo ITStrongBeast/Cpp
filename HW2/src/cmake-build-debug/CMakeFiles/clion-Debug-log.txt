@@ -1,0 +1,12 @@
+C:\Users\nG.n5n5Len_55\AppData\Local\Programs\CLion\bin\cmake\win\x64\bin\cmake.exe -DCMAKE_BUILD_TYPE=Debug -DCMAKE_MAKE_PROGRAM=C:/Users/nG.n5n5Len_55/AppData/Local/Programs/CLion/bin/ninja/win/x64/ninja.exe "-DCMAKE_C_COMPILER=C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/Llvm/bin/clang-cl.exe" "-DCMAKE_CXX_COMPILER=C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/Llvm/bin/clang-cl.exe" -G Ninja -S C:\Users\nG.n5n5Len_55\Desktop\Programming\C\C++\HW2\src -B C:\Users\nG.n5n5Len_55\Desktop\Programming\C\C++\HW2\src\cmake-build-debug
+CMake Error at CMakeLists.txt:8 (add_subdirectory):
+  add_subdirectory not given a binary directory but the given source
+  directory
+  "C:/Users/nG.n5n5Len_55/Desktop/Programming/C/C++/CPPLAB1/src/Google_Tests"
+  is not a subdirectory of
+  "C:/Users/nG.n5n5Len_55/Desktop/Programming/C/C++/HW2/src".  When
+  specifying an out-of-tree source a binary directory must be explicitly
+  specified.
+
+
+-- Configuring incomplete, errors occurred!

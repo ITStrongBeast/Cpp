@@ -1,0 +1,10 @@
+release/board.o
+release/cell.o
+release/customgame.o
+release/game.o
+release/main.o
+release/qrc_resource.o
+release/moc_board.o
+release/moc_cell.o
+release/moc_customgame.o
+release/moc_game.o
