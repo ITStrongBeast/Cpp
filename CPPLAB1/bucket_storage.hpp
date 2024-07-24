@@ -1,466 +1,581 @@
 #pragma once
 
-#include "Block.hpp"
-#include "Node.hpp"
+#include <cstddef>
+#include <iterator>
+#include <stdexcept>
 
-#include <gtest/internal/gtest-type-util.h>
-
-#include <algorithm>
-#include <cstdint>
-
-template<typename T>
+template< typename T >
 class BucketStorage
 {
-public:
+  public:
+	class Iterator;
+	class ConstIterator;
+	class Node;
+	class Block;
+
 	using value_type = T;
-	using reference = value_type&;
-	using const_reference = const value_type&;
+	using reference = T&;
+	using const_reference = const T&;
 	using difference_type = std::ptrdiff_t;
 	using size_type = std::size_t;
+	using iterator = Iterator;
+	using const_iterator = Iterator;
 
-	// конструкторы контейнера
-	BucketStorage() = default;
+	BucketStorage() noexcept;
+	BucketStorage(const BucketStorage& other);
+	BucketStorage(BucketStorage&& other) noexcept;
+	explicit BucketStorage(size_type block_capacity);
+	~BucketStorage();
+	BucketStorage& operator=(const BucketStorage& other) noexcept;
+	BucketStorage& operator=(BucketStorage&& other) noexcept;
+	iterator insert(const value_type& value);
+	iterator insert(value_type&& value);
+	iterator myInsert(value_type* value);
+	iterator erase(const_iterator it);
+	[[nodiscard]] bool empty() const noexcept;
+	[[nodiscard]] size_type size() const noexcept;
+	[[nodiscard]] size_type capacity() const noexcept;
+	void shrink_to_fit();
+	void clear();
+	void swap(BucketStorage& other) noexcept;
+	Node* myBegin() const noexcept;
+	iterator begin() noexcept;
+	const_iterator begin() const noexcept;
+	const_iterator cbegin() noexcept;
+	iterator end() noexcept;
+	const_iterator end() const noexcept;
+	const_iterator cend() noexcept;
+	static iterator get_to_distance(iterator it, difference_type distance);
 
-	// Конструктор копирования
-	BucketStorage(const BucketStorage& other) {
-		//std::copy(other.begin(), other.end(), data);
-	}
-
-	// Оператор копирующего присваивания
-	BucketStorage& operator=(const BucketStorage& other) {
-		if (this != &other) {
-			BucketStorage temp(other); // Копируем, затем меняем местами
-			swap(temp);
-		}
-		return *this;
-	}
-
-	// Конструктор перемещения
-	BucketStorage(BucketStorage&& other) noexcept {
-		swap(other);
-	}
-
-	// Оператор перемещающего присваивания
-	BucketStorage& operator=(BucketStorage&& other) noexcept {
-		if (this != &other) {
-			BucketStorage temp(std::move(other)); // Перемещаем, затем меняем местами
-			swap(temp);
-		}
-		return *this;
-	}
-
-	BucketStorage(value_type block_capaсity)
+	class Iterator
 	{
-		this->block_capaсity = block_capaсity;
-	}
+	  public:
+		using iterator_category = std::bidirectional_iterator_tag;
+		using value_type = T;
+		using difference_type = std::ptrdiff_t;
+		using pointer = T*;
+		using reference = T&;
 
-	~BucketStorage() = default;
+		Node* value;
 
-	// итератор контейнера
-	template<typename C>
-	class abstract_iterator
-	{
-		friend class BucketStorage;
-		Node< value_type > *node = nullptr;
-
-	public:
-		abstract_iterator(Node< value_type > *node)
-		{
-			this->node = node;
-		}
-
-		abstract_iterator &operator=(const abstract_iterator &other)
-		{
-			this->node = other.node;
-			return *this;
-		}
-
-		abstract_iterator &operator++()
-		{
-			if (node->next == node->block->capaсity)
-			{
-				if (node->block->next == nullptr)
-				{
-					// ошибочка
-				}
-				Block< value_type > *newBlock = node->block->next; // переход к следующему блоку
-				node = newBlock->data[newBlock->first];   // переход к первому элементу в новом блоке
-			}
-			else
-			{
-				node = node->block->data[node->next];
-			}
-			return *this;
-		}
-
-		abstract_iterator &operator--()
-		{
-			if (node->prev == -1)
-			{
-				if (node->block->prev == nullptr)
-				{
-				}                                         // ошибочка
-				Block< value_type > *newBlock = node->block->prev; // переход к следующему блоку
-				node = newBlock->data[newBlock->last];    // переход к первому элементу в новом блоке
-			}
-			else
-			{
-				node = node->block->data[node->prev];
-			}
-			return *this;
-		}
-
-		bool operator==(const abstract_iterator &other)
-		{
-			return node->block->id == other.node->block->id && node->id == other.node;
-		}
-
-		bool operator!=(const abstract_iterator &other)
-		{
-			return !(*this == other);
-		}
-
-		bool operator<(const abstract_iterator &other)
-		{
-			if (this->node->block->id < other.node->block->id)
-			{
-				return true;
-			}
-			if (this->node->block->id == other.node->block->id)
-			{
-				return this->node->id < other.node->id;
-			}
-			return false;
-		}
-
-		bool operator>(const abstract_iterator &other)
-		{
-			if (this->node->block->id > other.node->block->id)
-			{
-				return true;
-			}
-			if (this->node->block->id == other.node->block->id)
-			{
-				return this->node->id > other.node->id;
-			}
-			return false;
-		}
-
-		bool operator<=(const abstract_iterator &other)
-		{
-			return !(*this > other);
-		}
-
-		bool operator>=(const abstract_iterator &other)
-		{
-			return !(*this < other);
-		}
+		Iterator();
+		explicit Iterator(Node* value);
+		~Iterator();
+		Iterator operator++();
+		Iterator operator++(int);
+		Iterator operator--();
+		Iterator operator--(int);
+		bool operator==(const Iterator& other) const;
+		bool operator!=(const Iterator& other) const;
+		bool operator<(const Iterator& other) const;
+		bool operator>(const Iterator& other) const;
+		bool operator<=(const Iterator& other) const;
+		bool operator>=(const Iterator& other) const;
+		BucketStorage::value_type* operator->();
+		reference operator*();
 	};
 
-	class iterator : public abstract_iterator
+	class ConstIterator : public Iterator
 	{
-		friend class BucketStorage;
+	  public:
+		using iterator_category = std::bidirectional_iterator_tag;
+		using value_type = const T;
+		using difference_type = std::ptrdiff_t;
+		using pointer = const T*;
+		using reference = const T&;
 
-	public:
-		value_type operator*()
-		{
-			return *(abstract_iterator::node->data);
-		}
+		ConstIterator() : Iterator() {}
+		explicit ConstIterator(const Node* value) : Iterator(const_cast< Node* >(value)) {}
 
-		value_type *operator->()
-		{
-			return abstract_iterator::node->data;
-		}
+		const BucketStorage::value_type* operator->() const { return Iterator::operator->(); }
+		reference operator*() const { return *Iterator::operator->(); }
 	};
 
-	class const_iterator : public abstract_iterator
+	class Node
 	{
-		friend class BucketStorage;
+	  public:
+		value_type* value = nullptr;
+		size_type id = 0;
+		Block* block = nullptr;
+		BucketStorage< T >* bucket = nullptr;
 
-	public:
-		value_type operator*() const
-		{
-			return *(abstract_iterator::node->data);
-		}
-
-		value_type *operator->() const
-		{
-			return abstract_iterator::node->data;
-		}
+		Node() = default;
+		~Node() { value = nullptr; }
 	};
 
-
-	using iterator = abstract_iterator
-	using const_iterator = const value_type*;
-
-
-	// методы
-	iterator insert(const value_type &value)
+	class Block
 	{
-		const value_type *val = &value;
-		count++;
-		if (globalEmptyStack != nullptr) // есть удалённые
-		{
-			Node< value_type > oldNode = globalEmptyStack->data[globalEmptyStack->stack];
-			// беру ноду в массиве, где есть свободное место
-			globalEmptyStack->stack = oldNode.next; // перехожу по внутреннему стеку
-			oldNode.next = -1;                      // убираю из удалнных
-			if (globalEmptyStack->stack == block_capaсity)
-			// значит внутренний стек стал пустым и надо обнулить его и глобальный стек блоков т.к. этот блок теперь полный
-			{
-				globalEmptyStack->stack = -1;
-				globalEmptyStack = globalEmptyStack->prevEmpty;
-			}
-			// т.к. этот элемент уже был удалён и теперь снова вставлен в порядке стека, его активные соседи актуальны
-			if (oldNode.activePrev > -1)
-			{
-				globalEmptyStack->data[oldNode.activePrev].activeNext = oldNode.id; // теперь мы для кого-то активные справа
-			}
-			if (oldNode.activeNext < block_capaсity)
-			{
-				globalEmptyStack->data[oldNode.activeNext].activePrev = oldNode.id; // теперь мы для кого-то активные слева
-			}
-			oldNode.data = val; // добавили значение
-			oldNode.status = 1; // запомнили что активны
-			// надо проверить first и last как локальный, так и глобальный
-			if (globalEmptyStack->first == -1 || globalEmptyStack->first > oldNode.id)
-			{
-				globalEmptyStack->first = oldNode.id;
-			}
-			if (globalEmptyStack->last == -1 || globalEmptyStack->last < oldNode.id)
-			{
-				globalEmptyStack->last = oldNode.id;
-			}
-			// глобальные:
-			if (globalFirst == nullptr || globalFirst->block->id > globalEmptyStack->id ||
-			    globalFirst->block->id == globalEmptyStack->id && globalFirst->id > oldNode.id)
-			{
-				globalFirst = &oldNode;
-			}
-			if (globalLast == nullptr || globalLast->block->id < globalEmptyStack->id ||
-			    globalLast->block->id == globalEmptyStack->id && globalLast->id < oldNode.id)
-			{
-				globalLast = &oldNode;
-			}
-			oldNode.block->data[oldNode.id].data = val;
-			++globalEmptyStack->blockCount;
-			return iterator(&oldNode);
-		}
-		if (myEmpty != block_capaсity) // есть пустые
-		{
-			lastBlock->data[myEmpty] = Node< value_type >(val, myEmpty - 1, block_capaсity, myEmpty, &lastBlock, 1);
-			//создали ноду
-			lastBlock->data[myEmpty - 1].activeNext = myEmpty;
-			myEmpty++;
-			++lastBlock->blockCount;
-			return iterator(&(lastBlock->data[myEmpty - 1]));
-		}
-		// надо создать блок :(
-		Block< value_type > newBlock = Block< value_type >(block_capaсity, &lastBlock);
-		lastBlock->next = &newBlock; // добавляем его в список блоков
-		lastBlock = &newBlock; // перемещаем указатель на последний блок
-		newBlock.data[0] = Node< value_type >(val, -1, block_capaсity, 0, &lastBlock, 1); // создаём первую ноду
-		myEmpty = 1;
-		return iterator(&(newBlock.data[0]));
-	}
+	  public:
+		Block* prev = nullptr;
+		Block* next = nullptr;
+		Node* data = nullptr;
+		size_type id = 0;
+		size_type count = 0;
+		Block() = default;
+		~Block() { delete[] this->data; }
+	};
 
-	iterator insert(value_type &&value)
-	{
-		value_type* val = new value_type(std::move(value));
-		return insert(*val);
-	}
-
-	iterator erase(const_iterator it)
-	{
-		Node< value_type > *value = it.node;
-		if (value->status == 0)
-		{
-			//ошибочка
-		}
-		Block< value_type > *actualBlock = it.node->block;
-		// уберём ноду из списка активных: (при этом значения соседей не убираем, они будут актуальны при вставке)
-		if (value->activePrev > -1)
-		{
-			actualBlock->data[value->activePrev].next = value->activeNext;
-		}
-		if (value->activeNext < block_capaсity)
-		{
-			actualBlock->data[value->activeNext].prev = value->activePrev;
-		}
-		// добавим ноду в локальный стек удалённых:
-		value->next = actualBlock->stack;
-		actualBlock->stack = value->id;
-		if (actualBlock->nextEmpty == nullptr && actualBlock->prevEmpty == nullptr)
-		// если этого элемента небыло в стеке блоков с пустыми элементам, то добавим
-		{
-			if (globalEmptyStack == nullptr)
-			{
-				globalEmptyStack = actualBlock;
-			}
-			else
-			{
-				globalEmptyStack->nextEmpty = actualBlock;
-				actualBlock->prevEmpty = globalEmptyStack;
-				globalEmptyStack = actualBlock;
-			}
-		}
-		--actualBlock->blockCount;
-		count--;
-
-
-
-		// НАДО РАЗОБРАТЬСЯ С FIRST, LAST И Т.П.
-
-
-
-		bool flag = lastBlock->id == actualBlock->id && value->next == block_capaсity;
-		iterator result = iterator(&value); // ??????????
-		value->status = 0;
-		if (actualBlock->blockCount == 0) // нужно удалить блок
-		{
-			// разбираемся со списком блоков
-			if (actualBlock->prev == nullptr)
-			{
-				firstBlock = actualBlock->next;
-			}
-			else
-			{
-				actualBlock->prev->next = actualBlock->next;
-			}
-			if (actualBlock->next == nullptr)
-			{
-				lastBlock = actualBlock->prev;
-			}
-			else
-			{
-				actualBlock->next->prev = actualBlock->prev;
-			}
-			// разбираемся со списком в котором есть пустые элементы
-			if (actualBlock == globalEmptyStack)
-			{
-				globalEmptyStack = actualBlock->prevEmpty;
-			}
-			if (actualBlock->nextEmpty != nullptr)
-			{
-				actualBlock->nextEmpty->prevEmpty = actualBlock->prevEmpty;
-			}
-			if (actualBlock->prevEmpty != nullptr)
-			{
-				actualBlock->prevEmpty->nextEmpty = actualBlock->nextEmpty;
-			}
-			delete *actualBlock;
-		}
-		return flag ? end() : result++;
-	}
-
-	bool empty() noexcept;
-	value_type size() noexcept;
-	value_type copacity() noexcept;
-	void shrink_to_fit() noexcept;
-	void clear() noexcept;
-	void swap(BucketStorage &other) noexcept;
-
-	// методы для итератора
-	iterator begin()
-	{
-		return iterator(globalFirst);
-	}
-
-	/*const_iterator begin() noexcept
-	{
-		return const_iterator(globalFirst);
-	}*/
-
-	const_iterator cbegin() noexcept
-	{
-	} // хуй знает что это
-
-	iterator end() noexcept
-	{
-		return iterator(globalLast->next);
-	}
-
-	/*const_iterator end() noexcept
-	{
-		return const_iterator(globalLast->next);
-	}*/
-
-	const_iterator cend() noexcept
-	{
-		// это тоже хуй знает
-	}
-
-	iterator get_to_distance(iterator it, const difference_type distance) noexcept
-	{
-		for (int32_t i = 0; i < distance; i++)
-		{
-			++it;
-		}
-		return it;
-	}
-
-private:
-	int64_t count = 0;                // кол-во заполненных ячейек
-	Node< value_type > *globalFirst = nullptr; // первый и последний не пустой элемент для методов итератора
-	Node< value_type > *globalLast = nullptr;
-	int32_t block_capaсity = 64;      // размер блока (у всех блоков одинаковый)
-	int32_t myEmpty = block_capaсity; // индекс пустой ячейки после которой мы никогда небыли в последенем блоке
-	// (если он больше block_capaсity, значит мы уже были во всех ячейках блока)
-	Block< value_type > *firstBlock = nullptr;       // указатель на первый блок
-	Block< value_type > *lastBlock = nullptr;        // указатель на последний блок, в котором должен быть empty
-	Block< value_type > *globalEmptyStack = nullptr; // указатель на стек пустых блоков
+	Block* head = nullptr;
+	Block* tail;
+	size_type block_capacity = 64;
+	size_type count = 0;
 };
 
-
-template <typename T>
-bool BucketStorage<T>::empty() noexcept
+template< typename T >
+BucketStorage< T >::BucketStorage() noexcept
 {
-	return count == 0;
+	tail = new Block();
+	tail->id = 1;
+	tail->data = new Node[1];
+	tail->data[0].block = tail;
+	tail->data[0].bucket = this;
 }
 
-template <typename T>
-T BucketStorage<T>::size() noexcept
+template< typename T >
+BucketStorage< T >::BucketStorage(const BucketStorage& other) : block_capacity(other.block_capacity)
 {
-	return count;
-}
+	tail = new Block();
+	tail->id = 1;
+	tail->data = new Node[1];
+	tail->data[0].block = tail;
+	tail->data[0].bucket = this;
 
-template <typename T>
-T BucketStorage<T>::copacity() noexcept
-{
-	return (lastBlock->id + 1) * block_capaсity - count;
-}
-
-template <typename T>
-void BucketStorage<T>::swap(BucketStorage &other) noexcept
-{
-	std::swap(count, other.count);
-	std::swap(globalFirst, other.globalFirst);
-	std::swap(globalLast, other.globalLast);
-	std::swap(block_capaсity, other.block_capaсity);
-	std::swap(myEmpty, other.myEmpty);
-	std::swap(firstBlock, other.firstBlock); // это влечёт за собой свап всех блоков
-	std::swap(lastBlock, other.lastBlock);
-	std::swap(globalEmptyStack, other.globalEmptyStack);
-}
-
-template <typename T>
-void BucketStorage<T>::clear() noexcept
-{
-	for (int32_t i = 0; i < lastBlock->id; i++)
+	for (const auto& value : other)
 	{
-		Block< value_type > *buffer = firstBlock->next;
-		delete *firstBlock;
-		firstBlock = buffer;
+		insert(value);
 	}
-	count = 0;
-	globalFirst = nullptr;
-	globalLast = nullptr;
-	firstBlock = lastBlock = nullptr;
-	myEmpty = 0;
 }
 
-template <typename T>
-void BucketStorage<T>::shrink_to_fit() noexcept
+template< typename T >
+BucketStorage< T >::BucketStorage(BucketStorage&& other) noexcept :
+	block_capacity(other.block_capacity), head(other.head), tail(other.tail), count(other.count)
 {
-	// ебанутая хуйня, надо продумать
+	other.head = nullptr;
+	other.tail = nullptr;
+	other.count = 0;
+	other.block_capacity = 0;
+}
+
+template< typename T >
+BucketStorage< T >::BucketStorage(size_type block_capacity)
+{
+	tail = new Block();
+	tail->id = 1;
+	tail->data = new Node[1];
+	tail->data[0].block = tail;
+	tail->data[0].bucket = this;
+
+	this->block_capacity = block_capacity;
+	this->count = 0;
+}
+
+template< typename T >
+BucketStorage< T >::~BucketStorage()
+{
+	while (head != nullptr)
+	{
+		Block* temp = head;
+		head = head->next;
+		delete temp;
+	}
+}
+
+template< typename T >
+BucketStorage< T >& BucketStorage< T >::operator=(const BucketStorage& other) noexcept
+{
+	if (this != &other)
+	{
+		BucketStorage temp(other);
+		this->swap(temp);
+	}
+	return *this;
+}
+
+template< typename T >
+BucketStorage< T >& BucketStorage< T >::operator=(BucketStorage&& other) noexcept
+{
+	if (this != &other)
+	{
+		clear();
+		this->head = other.head;
+		this->tail = other.tail;
+		this->block_capacity = other.block_capacity;
+		this->count = other.count;
+		other.head = nullptr;
+		other.tail = nullptr;
+		other.block_capacity = 0;
+		other.count = 0;
+	}
+	return *this;
+}
+
+template< typename T >
+typename BucketStorage< T >::iterator BucketStorage< T >::myInsert(value_type* value)
+{
+	Block* buf = head;
+	while (buf != nullptr)
+	{
+		if (buf->count < block_capacity)
+		{
+			break;
+		}
+		buf = buf->next;
+	}
+	if (buf == nullptr || buf->id == tail->id)
+	{
+		buf = new Block();
+		buf->next = tail;
+		buf->prev = tail->prev;
+		tail->prev = buf;
+		if (buf->prev != nullptr)
+		{
+			buf->prev->next = buf;
+		}
+		buf->id = tail->id;
+		++tail->id;
+		buf->data = new Node[block_capacity];
+		if (head == nullptr)
+		{
+			head = buf;
+		}
+	}
+	++buf->count;
+	++this->count;
+	for (size_type i = 0; i < this->block_capacity; i++)
+	{
+		if (buf->data[i].value == nullptr)
+		{
+			buf->data[i].value = value;
+			buf->data[i].id = i;
+			buf->data[i].bucket = this;
+			buf->data[i].block = buf;
+			return iterator(&buf->data[i]);
+		}
+	}
+	return iterator(&buf->data[0]);
+}
+
+template< typename T >
+typename BucketStorage< T >::iterator BucketStorage< T >::insert(const value_type& value)
+{
+	auto* newValue = new value_type(value);
+	return myInsert(newValue);
+}
+
+template< typename T >
+typename BucketStorage< T >::iterator BucketStorage< T >::insert(value_type&& value)
+{
+	auto* newValue = new value_type(std::move(value));
+	return myInsert(newValue);
+}
+
+template< typename T >
+typename BucketStorage< T >::iterator BucketStorage< T >::erase(const_iterator it)
+{
+	Block* block = it.value->block;
+	if (block->id == tail->id)
+	{
+		throw std::runtime_error("Iterator is out of range");
+	}
+	--block->count;
+	--this->count;
+	it.value->value = nullptr;
+	if (block->count == 0)
+	{
+		if (block->prev != nullptr)
+		{
+			block->prev->next = block->next;
+		}
+		if (block->next != nullptr)
+		{
+			block->next->prev = block->prev;
+		}
+		if (block->id == head->id)
+		{
+			head = block->next;
+		}
+		delete block;
+	}
+	it++;
+	return it;
+}
+
+template< typename T >
+bool BucketStorage< T >::empty() const noexcept
+{
+	return this->count == 0;
+}
+
+template< typename T >
+typename BucketStorage< T >::size_type BucketStorage< T >::size() const noexcept
+{
+	return this->count;
+}
+
+template< typename T >
+typename BucketStorage< T >::size_type BucketStorage< T >::capacity() const noexcept
+{
+	size_type activ = 0;
+	Block* buf = head;
+	if (buf == nullptr)
+	{
+		return 0;
+	}
+	while (buf != nullptr)
+	{
+		activ++;
+		buf = buf->next;
+	}
+	activ--;
+	return this->block_capacity * activ;
+}
+
+template< typename T >
+void BucketStorage< T >::shrink_to_fit()
+{
+	auto* newBlock = new Block();
+	newBlock->id = 1;
+	newBlock->data = new Node[this->count];
+	newBlock->count = this->count;
+	iterator it = begin();
+	for (size_type i = 0; i < this->count; i++)
+	{
+		newBlock->data[i].value = it.value->value;
+		newBlock->data[i].id = i;
+		newBlock->data[i].block = newBlock;
+		newBlock->data[i].bucket = this;
+		++it;
+	}
+	head = newBlock;
+	tail->prev = newBlock;
+	newBlock->next = tail;
+}
+
+template< typename T >
+void BucketStorage< T >::clear()
+{
+	Block* buf = head;
+	while (buf != nullptr && buf->next != nullptr)
+	{
+		Block* temp = buf;
+		buf = buf->next;
+		delete temp;
+	}
+	this->block_capacity = 64;
+	this->count = 0;
+}
+
+template< typename T >
+void BucketStorage< T >::swap(BucketStorage& other) noexcept
+{
+	std::swap(this->head, other.head);
+	std::swap(this->tail, other.tail);
+	std::swap(this->block_capacity, other.block_capacity);
+	std::swap(this->count, other.count);
+}
+
+template< typename T >
+typename BucketStorage< T >::Node* BucketStorage< T >::myBegin() const noexcept
+{
+	Block* buf = head;
+	if (buf == nullptr)
+	{
+		return &(tail->data[0]);
+	}
+	for (size_type i = 0; i < this->block_capacity; i++)
+	{
+		if (buf->data[i].value != nullptr)
+		{
+			return &(buf->data[i]);
+		}
+	}
+	return &(tail->data[0]);
+}
+
+template< typename T >
+typename BucketStorage< T >::iterator BucketStorage< T >::begin() noexcept
+{
+	return iterator(myBegin());
+}
+
+template< typename T >
+typename BucketStorage< T >::const_iterator BucketStorage< T >::begin() const noexcept
+{
+	return const_iterator(myBegin());
+}
+
+template< typename T >
+typename BucketStorage< T >::const_iterator BucketStorage< T >::cbegin() noexcept
+{
+	return const_iterator(myBegin());
+}
+
+template< typename T >
+typename BucketStorage< T >::iterator BucketStorage< T >::end() noexcept
+{
+	return iterator(&tail->data[0]);
+}
+
+template< typename T >
+typename BucketStorage< T >::const_iterator BucketStorage< T >::end() const noexcept
+{
+	return const_iterator(&tail->data[0]);
+}
+
+template< typename T >
+typename BucketStorage< T >::const_iterator BucketStorage< T >::cend() noexcept
+{
+	return const_iterator(&tail->data[0]);
+}
+
+template< typename T >
+typename BucketStorage< T >::iterator BucketStorage< T >::get_to_distance(iterator it, difference_type distance)
+{
+	for (difference_type i = 0; i < distance; ++i)
+	{
+		++it;
+	}
+	return it;
+}
+
+template< typename T >
+BucketStorage< T >::Iterator::Iterator() = default;
+
+template< typename T >
+BucketStorage< T >::Iterator::Iterator(Node* value) : value(value)
+{
+}
+
+template< typename T >
+BucketStorage< T >::Iterator::~Iterator() = default;
+
+template< typename T >
+typename BucketStorage< T >::iterator BucketStorage< T >::Iterator::operator++()
+{
+	this->operator++(0);
+	return *this;
+}
+
+template< typename T >
+typename BucketStorage< T >::iterator BucketStorage< T >::Iterator::operator++(int)
+{
+	Block* buf = value->block;
+	if (buf->id == value->bucket->tail->id)
+	{
+		throw std::runtime_error("Iterator is out of range");
+	}
+	for (size_type i = value->id + 1; i < value->bucket->block_capacity; i++)
+	{
+		if (buf->data[i].value != nullptr)
+		{
+			value = &buf->data[i];
+			return *this;
+		}
+	}
+	buf = buf->next;
+	if (buf->id == value->bucket->tail->id)
+	{
+		value = &buf->data[0];
+		return *this;
+	}
+	for (size_type i = 0; i < value->bucket->block_capacity; i++)
+	{
+		if (buf->data[i].value != nullptr)
+		{
+			value = &buf->data[i];
+			return *this;
+		}
+	}
+	return *this;
+}
+
+template< typename T >
+typename BucketStorage< T >::iterator BucketStorage< T >::Iterator::operator--()
+{
+	this->operator--(0);
+	return *this;
+}
+
+template< typename T >
+typename BucketStorage< T >::iterator BucketStorage< T >::Iterator::operator--(int)
+{
+	Block* buf = value->block;
+	if (buf->id == value->bucket->head->id)
+	{
+		throw std::runtime_error("Iterator is out of range");
+	}
+	for (size_type i = value->id - 1; i > -1; --i)
+	{
+		if (buf->data[i].value != nullptr)
+		{
+			value = &buf->data[i];
+			return *this;
+		}
+	}
+	buf = buf->prev;
+	for (size_type i = value->id - 1; i > -1; --i)
+	{
+		if (buf->data[i].value != nullptr)
+		{
+			value = &buf->data[i];
+			return *this;
+		}
+	}
+	return *this;
+}
+
+template< typename T >
+bool BucketStorage< T >::Iterator::operator==(const Iterator& other) const
+{
+	return this->value->block->id == other.value->block->id && this->value->id == other.value->id;
+}
+
+template< typename T >
+bool BucketStorage< T >::Iterator::operator!=(const Iterator& other) const
+{
+	return !(*this == other);
+}
+
+template< typename T >
+bool BucketStorage< T >::Iterator::operator<(const Iterator& other) const
+{
+	if (this->value->block->id < other.value->block->id)
+	{
+		return true;
+	}
+	if (this->value->block->id > other.value->block->id)
+	{
+		return false;
+	}
+	return this->value->id < other.value->id;
+}
+
+template< typename T >
+bool BucketStorage< T >::Iterator::operator>(const Iterator& other) const
+{
+	return other < *this;
+}
+
+template< typename T >
+bool BucketStorage< T >::Iterator::operator<=(const Iterator& other) const
+{
+	return !(*this > other);
+}
+
+template< typename T >
+bool BucketStorage< T >::Iterator::operator>=(const Iterator& other) const
+{
+	return !(*this < other);
+}
+
+template< typename T >
+typename BucketStorage< T >::value_type* BucketStorage< T >::Iterator::operator->()
+{
+	return this->value->value;
+}
+
+template< typename T >
+typename BucketStorage< T >::reference BucketStorage< T >::Iterator::operator*()
+{
+	return *(this->value->value);
 }
